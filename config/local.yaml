@@ -1,0 +1,4 @@
+env: local #env
+storage_path: "storage/sqlite/storage.db"
+http_server:
+  address: localhost:8080 
