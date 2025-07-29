@@ -28,8 +28,8 @@ func New(filepath string) (*Storage, error) {
 	_, err = db.Exec(`
     CREATE TABLE IF NOT EXISTS wallet (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
-        address TEXT NOT NULL UNIQUE,
-        balance DECIMAL (15,2) DEFAULT 0.00
+        address TEXT NOT NULL UNIQUE CHECK(LENGTH(address) == 64),
+        balance DECIMAL (15,6) DEFAULT 0.00
     )
 `)
 	if err != nil {
@@ -39,8 +39,8 @@ func New(filepath string) (*Storage, error) {
 	_, err = db.Exec(`
     CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        from_address TEXT NOT NULL,
-        to_address TEXT NOT NULL,
+        from_address TEXT NOT NULL, 
+        to_address TEXT NOT NULL CHECK(LENGTH(to_address) == 64),
         amount DECIMAL (15, 2) NOT NULL,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				FOREIGN KEY (from_address) REFERENCES wallet(address),
@@ -52,4 +52,25 @@ func New(filepath string) (*Storage, error) {
 	}
 
 	return &Storage{db: db}, nil
+}
+
+func (st *Storage) CreateWallet(adr string, amount float32) error {
+	const op = "storage.sqlite.CreateWallet"
+
+	if len(adr) != 64 {
+		return fmt.Errorf("%s: invalid address length (expected 64, got %d)", op, len(adr))
+	}
+	stmt, err := st.db.Prepare(`
+	INSERT INTO wallet (address, balance)
+	VALUES (?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+
+	_, err = stmt.Exec(adr, amount)
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+	return nil
 }
