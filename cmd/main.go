@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/Petro-vich/transaction_processing_go/internal/config"
+	"github.com/Petro-vich/transaction_processing_go/internal/storage/sqlite"
 )
 
 const (
@@ -21,7 +21,11 @@ func main() {
 	log.Info("Start of the program")
 	log.Debug("Slog initialized")
 
-	//fmt.Println(config.StoragePath)
+	storage, err := sqlite.New(config.StoragePath)
+	if err != nil {
+		log.Error("failed to init storage")
+	}
+	_ = storage
 }
 
 func setupSlog(env string) *slog.Logger {
