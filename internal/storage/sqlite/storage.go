@@ -54,7 +54,7 @@ func New(filepath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (st *Storage) CreateWallet(adr string, amount float32) error {
+func (st *Storage) CreateWallet(adr string, amount float64) error {
 	const op = "storage.sqlite.CreateWallet"
 
 	if len(adr) != 64 {
@@ -73,4 +73,26 @@ func (st *Storage) CreateWallet(adr string, amount float32) error {
 		return fmt.Errorf("%s, %w", op, err)
 	}
 	return nil
+}
+
+func (st *Storage) GetBalance(address string) (float64, error) {
+	//TODO: conver float64 to Decimal
+
+	const op = "storage.sqlite.GetBalance"
+
+	stmt, err := st.db.Prepare(`
+	SELECT balance
+	FROM wallet
+	WHERE address = ?
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("%s, %w", op, err)
+	}
+
+	var balance float64
+	err = stmt.QueryRow(address).Scan(&balance)
+	if err != nil {
+		return 0, fmt.Errorf("%s, %w", op, err)
+	}
+	return balance, nil
 }
