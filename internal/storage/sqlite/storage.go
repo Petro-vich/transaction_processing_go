@@ -3,6 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -94,5 +95,55 @@ func (st *Storage) GetBalance(address string) (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%s, %w", op, err)
 	}
+
 	return balance, nil
+}
+
+func (st *Storage) SendMoney(from string, to string, amount float64) error {
+	const op = "storage.sqlite.SendMoney"
+
+	tx, err := st.db.Begin()
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+	defer tx.Rollback()
+
+	balance, err := st.GetBalance(from)
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+
+	if balance-amount < 0 {
+		return fmt.Errorf("%s, %w", op, "Недостаточно средств")
+	}
+
+	_, err = tx.Exec(`
+	UPDATE wallet SET balance = balance - ?
+	WHERE address = ?
+	`, amount, from)
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+
+	_, err = tx.Exec(`
+	UPDATE wallet SET balance = balance + ?
+	WHERE address = ?
+	`, amount, to)
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+
+	_, err = tx.Exec(`
+	INSERT INTO transactions (to_address, from_address, amount, created_at)
+	VALUES (?, ?, ?, ?)
+	`, from, to, amount, time.Now())
+	if err != nil {
+		return fmt.Errorf("%s, %w", op, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("%s: commit transaction: %w", op, err)
+	}
+
+	return nil
 }
