@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Petro-vich/transaction_processing_go/internal/models/transaction"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -114,7 +115,7 @@ func (st *Storage) SendMoney(from string, to string, amount float64) error {
 	}
 
 	if balance-amount < 0 {
-		return fmt.Errorf("%s, %w", op, "Недостаточно средств")
+		return fmt.Errorf("%s", op, "Недостаточно средств")
 	}
 
 	_, err = tx.Exec(`
@@ -146,4 +147,33 @@ func (st *Storage) SendMoney(from string, to string, amount float64) error {
 	}
 
 	return nil
+}
+
+func (st *Storage) GetLast(count int) ([]string, error) {
+	const op = "storage.sqlite.GetLast"
+
+	rows, err := st.db.Query(`
+	SELECT * 
+	FROM transactions
+	ORDER BY created_at DESC
+	LIMIT ?
+	`, count)
+	if err != nil {
+		return nil, fmt.Errorf("%s, %w", op, err)
+	}
+
+	trLast := []transaction.Request{}
+
+	for rows.Next() {
+		tr := transaction.Request{}
+		err := rows.Scan(&tr.Id, &tr.From, &tr.To, &tr.Amount, &tr.Created_at)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		trLast = append(trLast, tr)
+	}
+	fmt.Println(trLast)
+
+	return nil, nil
 }

@@ -32,6 +32,7 @@ func (sr *Server) Start() error {
 }
 
 func (sr *Server) routes() {
-	sr.router.HandleFunc("/api/send", sr.SendMoneyHandler)
-	
+	sr.router.HandleFunc("/api/wallet/{address}/balance", sr.GetBalanceHandler).Methods("GET")
+	sr.router.HandleFunc("/api/send", sr.SendMoneyHandler).Methods("POST")
+	sr.router.HandleFunc("/api/transactions", sr.GetLastHandler).Methods("GET")
 }
