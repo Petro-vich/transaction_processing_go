@@ -2,60 +2,145 @@ package httpserver
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/Petro-vich/transaction_processing_go/internal/lib/logger/sl"
 	"github.com/Petro-vich/transaction_processing_go/internal/models/transaction"
+	"github.com/Petro-vich/transaction_processing_go/internal/storage"
 	"github.com/gorilla/mux"
 )
 
+const (
+	InvalidAddr   = "invalid wallet address"
+	EmptyRequest  = "empty request"
+	InvalidAmount = "amount must be positive"
+	InvalidCount  = "count must be a positive integer"
+)
+
+const (
+	StatusOk    = "OK"
+	StatusError = "Error"
+)
+
+func sendError(w http.ResponseWriter, err string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  StatusError,
+		"message": err,
+	})
+}
+
 func (sr *Server) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
-	//const op = "handlers.getbalancehandler"
+	const op = "handlers.getbalancehandler"
+
 	arg := mux.Vars(r)
 	adr := arg["address"]
 
-	balance, err := sr.storage.GetBalance(adr)
-	if err != nil {
-		sr.log.Error("Ошибка получения баланса", sl.Err(err))
+	// if adr == "" {
+	// 	sendError(w, EmptyRequest, http.StatusBadRequest)
+	// 	sr.log.Error(EmptyRequest)
+	// }
+
+	if len(adr) != 64 {
+		sendError(w, InvalidAddr, http.StatusBadRequest)
+		sr.log.Info("Invalid wallet address length", slog.String("op", op), slog.String("address", adr))
+		return
 	}
 
-	fmt.Println(balance)
+	balance, err := sr.storage.GetBalance(adr)
+	if err == storage.ErrAddressNotExist {
+		sr.log.Info("address not found", slog.String("op", op), slog.String("address", adr))
+		//TODO: Возвращать string или storage.err
+		sendError(w, "the address is not exists", http.StatusBadRequest)
+	} else if err != nil {
+		sendError(w, "Interтal server error", http.StatusInternalServerError)
+		sr.log.Error("Error get balance", slog.String("op", op), sl.Err(err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  StatusOk,
+		"balance": strconv.FormatFloat(balance, 'g', -1, 64),
+	})
 }
 
 func (sr *Server) SendMoneyHandler(w http.ResponseWriter, r *http.Request) {
-	//const op = "httpserver.SendMoneyHandler"
+	const op = "httpserver.SendMoneyHandler"
 
 	var req transaction.Request
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprintf(w, "Ошибка декода") //TODO:
-		sr.log.Error("error decode", sl.Err(err))
+		sr.log.Info("error decode", slog.String("op", op), sl.Err(err))
+		sendError(w, "Invalid request body", http.StatusBadRequest)
+		sr.log.Error("Failed to decode request body", slog.String("op", op), sl.Err(err))
 		return
 	}
-	sr.log.Info("request body decoded")
+
+	if len(req.From) != 64 || len(req.To) != 64 {
+		sendError(w, InvalidAddr, http.StatusBadRequest)
+		sr.log.Error("Invalid wallet address length", slog.String("op", op))
+		return
+	}
+
+	if req.Amount <= 0 {
+		sendError(w, InvalidAmount, http.StatusBadRequest)
+		sr.log.Info(InvalidAmount, slog.String("op", op), slog.Float64("amount", (req.Amount)))
+		return
+	}
+
+	sr.log.Info("Request body decoded", slog.String("op", op))
 
 	err := sr.storage.SendMoney(req.From, req.To, req.Amount)
-	if err != nil {
-		fmt.Println(err)
+	if err == storage.ErrAddressNotExist {
+		//TODO: Как проверить что два адреса существуют
+		sendError(w, "Address does not exist", http.StatusNotFound)
+		sr.log.Info("Address not found", slog.String("op", op)) //TODO: добавить slog
+		return
+	} else if err == storage.ErrInsufficient {
+		sendError(w, "Insufficient funds in the account", http.StatusBadRequest)
+		sr.log.Info("Insufficient funds", slog.String("op", op))
+		return
+	} else if err != nil {
+		sr.log.Error("Failed to send money", slog.String("op", op), sl.Err(err))
+		sendError(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
-	sr.log.Info("Отправка завершена успешно")
+
+	sr.log.Info("Transaction completed successfully", slog.String("op", op))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": StatusOk,
+	})
 }
 
 func (sr *Server) GetLastHandler(w http.ResponseWriter, r *http.Request) {
+	const op = "httpserver.GetLastHandler"
+
 	query := r.URL.Query()
 	strCount := query.Get("count")
+
 	count, err := strconv.Atoi(strCount)
-	if err != nil {
-		sr.log.Debug("atrcov.atoi error", sl.Err(err))
+	if err != nil || count <= 0 {
+		sendError(w, InvalidCount, http.StatusBadRequest)
+		sr.log.Error(InvalidCount, slog.Int("count", count))
+		return
 	}
 
-	LastOp, err := sr.storage.GetLast(count)
+	transactions, err := sr.storage.GetLast(count)
 	if err != nil {
-		sr.log.Debug("sr.storage.Getlast error", sl.Err(err))
+		sr.log.Error("Couldn't get the latest transactions", slog.String("op", op), sl.Err(err))
+		sendError(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
-	_ = LastOp
-
+	sr.log.Info("the 'getLast' operation was completed quickly", slog.String("op", op))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(transactions)
 }
