@@ -4,14 +4,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/Petro-vich/transaction_processing_go/internal/storage/sqlite"
+	"github.com/Petro-vich/transaction_processing_go/internal/storage"
 )
 
 type Initialization struct {
-	storage *sqlite.Storage
+	storage storage.Repository
 }
 
-func NewInitializer(storage *sqlite.Storage) *Initialization {
+func NewInitializer(storage storage.Repository) *Initialization {
 	return &Initialization{storage: storage}
 }
 

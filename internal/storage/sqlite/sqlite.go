@@ -16,7 +16,7 @@ type Storage struct {
 }
 
 // TODO: правильно обработать ошибки
-func New(filepath string) (*storage.Repository, error) {
+func New(filepath string) (*Storage, error) {
 	const op = "storage.sqlite.New"
 	db, err := sql.Open("sqlite3", filepath)
 	if err != nil {
@@ -176,7 +176,7 @@ func (st *Storage) GetLast(count int) ([]transaction.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s, %w", op, err)
 	}
-	defer rows.Close()
+
 	transactions := []transaction.Request{}
 
 	for rows.Next() {
@@ -191,6 +191,5 @@ func (st *Storage) GetLast(count int) ([]transaction.Request, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("%s: rows error: %w", op, err)
 	}
-
 	return transactions, nil
 }

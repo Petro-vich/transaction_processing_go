@@ -5,18 +5,18 @@ import (
 	"net/http"
 
 	"github.com/Petro-vich/transaction_processing_go/internal/config"
-	"github.com/Petro-vich/transaction_processing_go/internal/storage/sqlite"
+	"github.com/Petro-vich/transaction_processing_go/internal/storage"
 	"github.com/gorilla/mux"
 )
 
 type Server struct {
-	storage *sqlite.Storage
+	storage storage.Repository
 	config  *config.Config
 	router  *mux.Router
 	log     *slog.Logger
 }
 
-func New(storage *sqlite.Storage, config *config.Config, log *slog.Logger) *Server {
+func New(storage storage.Repository, config *config.Config, log *slog.Logger) *Server {
 	serv := Server{
 		storage: storage,
 		config:  config,
