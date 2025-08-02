@@ -19,9 +19,9 @@ type HTTPServer struct {
 
 func Load() *Config {
 	var cfg Config
-	configPath := "/home/gaylesga/Desktop/s21.project/go/transaction_processing_go/config/local.yaml"
-	//"config/local.yaml"
-	//TODO:
+
+	configPath := os.Getenv("CONFIG_PATH")
+
 	_, err := os.Stat(configPath)
 	if os.IsNotExist(err) {
 		log.Fatalf("config file is not exist: %s", configPath)
