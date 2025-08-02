@@ -15,7 +15,6 @@ type Storage struct {
 	db *sql.DB
 }
 
-// TODO: правильно обработать ошибки
 func New(filepath string) (*Storage, error) {
 	const op = "storage.sqlite.New"
 	db, err := sql.Open("sqlite3", filepath)
@@ -33,7 +32,7 @@ func New(filepath string) (*Storage, error) {
     CREATE TABLE IF NOT EXISTS wallet (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         address TEXT NOT NULL UNIQUE CHECK(LENGTH(address) == 64),
-        balance DECIMAL (15,6) DEFAULT 0.00
+        balance REAL DEFAULT 0.00
     )
 `)
 	if err != nil {
@@ -45,7 +44,7 @@ func New(filepath string) (*Storage, error) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         from_address TEXT NOT NULL, 
         to_address TEXT NOT NULL CHECK(LENGTH(to_address) == 64),
-        amount DECIMAL (15, 2) NOT NULL,
+        amount REAL NOT NULL,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				FOREIGN KEY (from_address) REFERENCES wallet(address),
 		    FOREIGN KEY (to_address) REFERENCES wallet(address) 
@@ -60,6 +59,10 @@ func New(filepath string) (*Storage, error) {
 
 func (st *Storage) CreateWallet(adr string, amount float64) error {
 	const op = "storage.sqlite.CreateWallet"
+
+	if amount <= 0 {
+		return fmt.Errorf("%s balanc must be positiv", op)
+	}
 
 	if len(adr) != 64 {
 		return fmt.Errorf("%s: invalid address length (expected 64, got %d)", op, len(adr))
@@ -80,8 +83,6 @@ func (st *Storage) CreateWallet(adr string, amount float64) error {
 }
 
 func (st *Storage) GetBalance(address string) (float64, error) {
-	//TODO: conver float64 to Decimal
-
 	const op = "storage.sqlite.GetBalance"
 
 	stmt, err := st.db.Prepare(`
@@ -192,4 +193,12 @@ func (st *Storage) GetLast(count int) ([]transaction.Request, error) {
 		return nil, fmt.Errorf("%s: rows error: %w", op, err)
 	}
 	return transactions, nil
+}
+
+func (st *Storage) IsEmpty() bool {
+	res, _ := st.db.Query(`
+	SELECT *
+	FROM wallet`)
+
+	return !res.Next()
 }
