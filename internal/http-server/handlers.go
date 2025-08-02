@@ -39,11 +39,6 @@ func (sr *Server) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	arg := mux.Vars(r)
 	adr := arg["address"]
 
-	// if adr == "" {
-	// 	sendError(w, EmptyRequest, http.StatusBadRequest)
-	// 	sr.log.Error(EmptyRequest)
-	// }
-
 	if len(adr) != 64 {
 		sendError(w, InvalidAddr, http.StatusBadRequest)
 		sr.log.Info("Invalid wallet address length", slog.String("op", op), slog.String("address", adr))
@@ -56,7 +51,7 @@ func (sr *Server) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 		//TODO: Возвращать string или storage.err
 		sendError(w, "the address is not exists", http.StatusBadRequest)
 	} else if err != nil {
-		sendError(w, "Interтal server error", http.StatusInternalServerError)
+		sendError(w, "Internal server error", http.StatusInternalServerError)
 		sr.log.Error("Error get balance", slog.String("op", op), sl.Err(err))
 		return
 	}
