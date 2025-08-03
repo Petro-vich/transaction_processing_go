@@ -182,7 +182,7 @@ func (st *Storage) GetLast(count int) ([]transaction.Request, error) {
 
 	for rows.Next() {
 		tr := transaction.Request{}
-		err := rows.Scan(&tr.From, &tr.To, &tr.Amount, &tr.Created_at)
+		err := rows.Scan(&tr.Id, &tr.From, &tr.To, &tr.Amount, &tr.Created_at)
 		if err != nil {
 			return nil, err
 		}
