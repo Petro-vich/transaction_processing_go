@@ -1,0 +1,7 @@
+.git
+.gitignore
+README.md
+Makefile
+coverage.out
+coverage.html
+storage/sqlite/storage.db
