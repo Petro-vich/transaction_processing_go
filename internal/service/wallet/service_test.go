@@ -39,13 +39,10 @@ func TestWalletService_Initialize(t *testing.T) {
 		store := &mockStorage{}
 		service := NewService(store)
 
-		// Настраиваем ожидания ПЕРЕД вызовом
 		store.On("CreateWallet", mock.AnythingOfType("string"), 100.0).Return(nil).Times(2)
 
-		// Вызываем тестируемый метод
 		err := service.InitWall(2)
 
-		// Проверяем результаты
 		assert.NoError(t, err)
 	})
 

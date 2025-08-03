@@ -48,8 +48,8 @@ func (sr *Server) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	balance, err := sr.storage.GetBalance(adr)
 	if err == storage.ErrAddressNotExist {
 		sr.log.Info("address not found", slog.String("op", op), slog.String("address", adr))
-		//TODO: Возвращать string или storage.err
 		sendError(w, "the address is not exists", http.StatusBadRequest)
+		return
 	} else if err != nil {
 		sendError(w, "Internal server error", http.StatusInternalServerError)
 		sr.log.Error("Error get balance", slog.String("op", op), sl.Err(err))
@@ -92,9 +92,8 @@ func (sr *Server) SendMoneyHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := sr.storage.SendMoney(req.From, req.To, req.Amount)
 	if err == storage.ErrAddressNotExist {
-		//TODO: Как проверить что два адреса существуют
 		sendError(w, "Address does not exist", http.StatusNotFound)
-		sr.log.Info("Address not found", slog.String("op", op)) //TODO: добавить slog
+		sr.log.Info("Address not found")
 		return
 	} else if err == storage.ErrInsufficient {
 		sendError(w, "Insufficient funds in the account", http.StatusBadRequest)
@@ -123,7 +122,7 @@ func (sr *Server) GetLastHandler(w http.ResponseWriter, r *http.Request) {
 	count, err := strconv.Atoi(strCount)
 	if err != nil || count <= 0 {
 		sendError(w, InvalidCount, http.StatusBadRequest)
-		sr.log.Error(InvalidCount, slog.Int("count", count))
+		sr.log.Error(InvalidCount, slog.String("count", strCount))
 		return
 	}
 
@@ -134,7 +133,7 @@ func (sr *Server) GetLastHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sr.log.Info("the 'getLast' operation was completed quickly", slog.String("op", op))
+	sr.log.Info("Retrieved transactions", slog.String("op", op), slog.Int("count", count))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(transactions)
