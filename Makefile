@@ -6,15 +6,15 @@ run-local:
 run-prod:
 	CONFIG_PATH=config/docker.yaml go run main.go
 
-#test:
-#	go clean -testcache
-#	go test -cover ./internal/storage/sqlite
+test:
+	go clean -testcache
+	go test ./...
 
-#test_cover:
-#	go clean -testcache
-#	go test -coverprofile=coverage.out ./internal/storage/sqlite
-#	go tool cover -html=coverage.out -o coverage.html
-#	xdg-open coverage.html
+test_cover:
+	go clean -testcache
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	xdg-open coverage.html
 
 docker-build:
 	docker build -t transaction-service .
